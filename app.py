@@ -132,42 +132,42 @@ with st.sidebar:
         st.session_state.messages = []
         st.success("✅ Conversation history cleared")
         
-        try:
-            store = EmbeddingStore(collection_name=collection_name)
-            
-            # Fetch all existing documents from ChromaDB
-            collection_data = store.collection.get(include=["metadatas"])
-            if collection_data and collection_data["metadatas"]:
-                # Extract unique filenames
-                unique_sources = list(set([meta.get("source", "Unknown Document") for meta in collection_data["metadatas"] if meta]))
-                
-                st.markdown("---")
-                st.subheader("📁 Your Documents")
-                for source in unique_sources:
-                    col_a, col_b = st.columns([4, 1])
-                    with col_a:
-                        st.write(f"📄 {source}")
-                    with col_b:
-                        # Add a button to delete individual documents
-                        if st.button("❌", key=f"del_{source}", help="Remove this document from knowledge base"):
-                            # Delete from ChromaDB where source matches
-                            store.collection.delete(where={"source": source})
-                            st.success(f"Removed {source}")
-                            st.session_state.chatbot = None
-                            st.session_state.processed_file = None
-                            st.rerun()
+    try:
+        store = EmbeddingStore(collection_name=collection_name)
+        
+        # Fetch all existing documents from ChromaDB
+        collection_data = store.collection.get(include=["metadatas"])
+        if collection_data and collection_data["metadatas"]:
+            # Extract unique filenames
+            unique_sources = list(set([meta.get("source", "Unknown Document") for meta in collection_data["metadatas"] if meta]))
             
             st.markdown("---")
-            if st.button("⚠️ Clear Knowledge Base"):
-                store.client.delete_collection(name=collection_name)
-                st.session_state.chatbot = None
-                st.session_state.processed_file = None
-                st.success("✅ Your personal knowledge base has been completely erased.")
-                st.rerun()
-                
-        except Exception as e:
-            pass
+            st.subheader("📁 Your Documents")
+            for source in unique_sources:
+                col_a, col_b = st.columns([4, 1])
+                with col_a:
+                    st.write(f"📄 {source}")
+                with col_b:
+                    # Add a button to delete individual documents
+                    if st.button("❌", key=f"del_{source}", help="Remove this document from knowledge base"):
+                        # Delete from ChromaDB where source matches
+                        store.collection.delete(where={"source": source})
+                        st.success(f"Removed {source}")
+                        st.session_state.chatbot = None
+                        st.session_state.processed_file = None
+                        st.rerun()
+        
+        st.markdown("---")
+        if st.button("⚠️ Clear Knowledge Base"):
+            store.client.delete_collection(name=collection_name)
+            st.session_state.chatbot = None
+            st.session_state.processed_file = None
+            st.success("✅ Your personal knowledge base has been completely erased.")
+            st.rerun()
             
+    except Exception as e:
+        pass
+        
     st.markdown("---")
     
     with st.expander("🔐 Account Settings"):
