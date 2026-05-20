@@ -79,3 +79,42 @@ def authenticate_user(username, password):
     if password_hash == stored_hash:
         return True, full_name
     return False, None
+
+def update_password(username, old_password, new_password):
+    """Verifies old password and updates to new password."""
+    is_auth, _ = authenticate_user(username, old_password)
+    if not is_auth:
+        return False, "Incorrect current password."
+        
+    password_hash, salt = hash_password(new_password)
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE users SET password_hash=?, salt=? WHERE username=?", 
+                  (password_hash, salt, username))
+        conn.commit()
+        success = True
+        msg = "Password updated successfully."
+    except Exception as e:
+        success = False
+        msg = str(e)
+    finally:
+        conn.close()
+        
+    return success, msg
+
+def delete_user(username):
+    """Deletes a user account entirely."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    try:
+        c.execute("DELETE FROM users WHERE username=?", (username,))
+        conn.commit()
+        success = True
+    except Exception:
+        success = False
+    finally:
+        conn.close()
+        
+    return success

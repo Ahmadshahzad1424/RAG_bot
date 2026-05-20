@@ -7,7 +7,7 @@ from pdf_processor import PDFProcessor
 from embedding_store import EmbeddingStore
 import os
 import uuid
-from auth import authenticate_user, create_user
+from auth import authenticate_user, create_user, update_password, delete_user
 
 # Initialize session state for auth and app
 if "authenticated" not in st.session_state:
@@ -143,9 +143,49 @@ with st.sidebar:
             st.error("Could not clear knowledge base. It might already be empty.")
             
     st.markdown("---")
+    
+    with st.expander("🔐 Account Settings"):
+        st.subheader("Change Password")
+        old_pw = st.text_input("Current Password", type="password")
+        new_pw = st.text_input("New Password", type="password")
+        if st.button("Update Password"):
+            if not old_pw or not new_pw:
+                st.error("Please fill in both fields.")
+            elif len(new_pw) < 6:
+                st.error("New password must be at least 6 characters.")
+            else:
+                success, msg = update_password(st.session_state.username, old_pw, new_pw)
+                if success:
+                    st.success("Password updated successfully!")
+                else:
+                    st.error(msg)
+                    
+        st.markdown("---")
+        st.subheader("Danger Zone")
+        if st.button("🚨 Delete Account", type="primary"):
+            # Clear knowledge base
+            try:
+                store = EmbeddingStore(collection_name=collection_name)
+                store.client.delete_collection(name=collection_name)
+            except Exception:
+                pass
+            
+            # Delete user from DB
+            delete_user(st.session_state.username)
+            
+            # Log out
+            st.session_state.authenticated = False
+            st.session_state.username = None
+            st.session_state.full_name = None
+            st.session_state.chatbot = None
+            st.session_state.messages = []
+            st.rerun()
+
+    st.markdown("---")
     if st.button("🚪 Logout"):
         st.session_state.authenticated = False
         st.session_state.username = None
+        st.session_state.full_name = None
         st.session_state.chatbot = None
         st.session_state.messages = []
         st.rerun()
