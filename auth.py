@@ -10,10 +10,15 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
+            full_name TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             salt TEXT NOT NULL
         )
     ''')
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT 'User'")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -29,7 +34,7 @@ def hash_password(password, salt=None):
     
     return password_hash, salt
 
-def create_user(username, password):
+def create_user(username, password, full_name):
     init_db()
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -43,8 +48,8 @@ def create_user(username, password):
     password_hash, salt = hash_password(password)
     
     try:
-        c.execute("INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)", 
-                  (username, password_hash, salt))
+        c.execute("INSERT INTO users (username, full_name, password_hash, salt) VALUES (?, ?, ?, ?)", 
+                  (username, full_name, password_hash, salt))
         conn.commit()
         success = True
         msg = "User created successfully"
@@ -61,14 +66,16 @@ def authenticate_user(username, password):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    c.execute("SELECT password_hash, salt FROM users WHERE username=?", (username,))
+    c.execute("SELECT full_name, password_hash, salt FROM users WHERE username=?", (username,))
     result = c.fetchone()
     conn.close()
     
     if result is None:
-        return False
+        return False, None
         
-    stored_hash, salt = result
+    full_name, stored_hash, salt = result
     password_hash, _ = hash_password(password, salt)
     
-    return password_hash == stored_hash
+    if password_hash == stored_hash:
+        return True, full_name
+    return False, None

@@ -14,6 +14,8 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "username" not in st.session_state:
     st.session_state.username = None
+if "full_name" not in st.session_state:
+    st.session_state.full_name = None
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "chatbot" not in st.session_state:
@@ -56,9 +58,11 @@ if not st.session_state.authenticated:
         login_username = st.text_input("Email Address", key="login_username")
         login_password = st.text_input("Password", type="password", key="login_password")
         if st.button("Login"):
-            if authenticate_user(login_username, login_password):
+            is_auth, user_full_name = authenticate_user(login_username, login_password)
+            if is_auth:
                 st.session_state.authenticated = True
                 st.session_state.username = login_username
+                st.session_state.full_name = user_full_name
                 st.success("Logged in successfully!")
                 st.rerun()
             else:
@@ -66,18 +70,21 @@ if not st.session_state.authenticated:
                 
     with tab2:
         st.subheader("Sign Up")
+        signup_name = st.text_input("Full Name", key="signup_name")
         signup_username = st.text_input("New Email Address (Gmail)", key="signup_username")
         signup_password = st.text_input("New Password", type="password", key="signup_password")
         signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
         if st.button("Register"):
-            if not signup_username.lower().endswith("@gmail.com"):
+            if not signup_name.strip():
+                st.error("Please enter your full name.")
+            elif not signup_username.lower().endswith("@gmail.com"):
                 st.error("Please use a valid @gmail.com address.")
             elif signup_password != signup_confirm:
                 st.error("Passwords do not match!")
             elif len(signup_username) < 13 or len(signup_password) < 6:
                 st.error("Invalid email length or password must be at least 6 chars.")
             else:
-                success, msg = create_user(signup_username, signup_password)
+                success, msg = create_user(signup_username, signup_password, signup_name)
                 if success:
                     st.success("Account created successfully! Please sign in.")
                 else:
@@ -86,7 +93,7 @@ if not st.session_state.authenticated:
     # Stop execution here if not authenticated
     st.stop()
 
-st.markdown(f"Welcome back, **{st.session_state.username}**! Upload PDFs to build your personal knowledge base.")
+st.markdown(f"Welcome back, **{st.session_state.full_name}**! Upload PDFs to build your personal knowledge base.")
 
 # Sidebar for controls
 with st.sidebar:

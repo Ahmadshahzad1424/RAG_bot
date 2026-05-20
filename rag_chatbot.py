@@ -77,7 +77,7 @@ class RAGChatbot:
         
         # Create context string (all chunks together)
         context = "\n\n".join(
-            f"[Chunk {i+1} - Relevance: {1-dist:.1%}]\n{chunk}"
+            f"[Document Excerpt]\n{chunk}"
             for i, (chunk, dist) in enumerate(zip(retrieved_chunks, retrieved_distances))
         )
         
@@ -85,11 +85,11 @@ class RAGChatbot:
         
         # Step 3: Create the message for Groq
         # This tells Groq: "Here's context. Use it to answer the question."
-        system_message = """You are a helpful AI assistant. 
+        system_message = """You are a professional and helpful AI assistant. 
         
-Answer the user's question based ONLY on the provided context.
-If the answer is not in the context, say "I don't have information about this."
-Be clear, concise, and cite which chunks you're using."""
+Answer the user's question naturally based ONLY on the provided document context.
+Do NOT mention terms like "context", "chunks", or "excerpts" in your answer, as the user does not know about the technical backend. Just provide a direct, human-readable answer.
+If the answer is not in the context, say "I don't have information about this in the uploaded documents." """
         
         user_message = f"""Context from documents:
 {context}
