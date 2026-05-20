@@ -112,7 +112,9 @@ with st.sidebar:
         help="How many chunks to retrieve for context"
     )
     
-    user_collection_name = f"user_data_{st.session_state.username}"
+    # Sanitize username for ChromaDB collection name (only allows a-zA-Z0-9._-)
+    sanitized_username = st.session_state.username.replace("@", "_").replace(".", "_")
+    user_collection_name = f"user_data_{sanitized_username}"
     
     # Hide the collection name from user since it's now personal
     collection_name = user_collection_name
