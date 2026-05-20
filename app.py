@@ -8,6 +8,7 @@ from embedding_store import EmbeddingStore
 import os
 import uuid
 from auth import authenticate_user, create_user, update_password, delete_user, create_session, get_user_from_session, clear_session
+from streamlit_cookies_controller import CookieController
 
 # Page config (must be the first Streamlit command)
 st.set_page_config(
@@ -34,19 +35,23 @@ if "processed_file" not in st.session_state:
 if "db_session_token" not in st.session_state:
     st.session_state.db_session_token = None
 
+# Initialize Cookie Controller
+controller = CookieController()
+
 # ---- Persistent Login Check ----
-# Check if a session token exists in the URL query params
-if not st.session_state.authenticated and "session_token" in st.query_params:
-    token = st.query_params["session_token"]
-    user_data = get_user_from_session(token)
+# Check if a session token exists in browser cookies
+session_token = controller.get("session_token")
+
+if not st.session_state.authenticated and session_token:
+    user_data = get_user_from_session(session_token)
     if user_data:
         st.session_state.authenticated = True
         st.session_state.username = user_data["username"]
         st.session_state.full_name = user_data["full_name"]
-        st.session_state.db_session_token = token
+        st.session_state.db_session_token = session_token
     else:
         # Invalid or expired token
-        del st.query_params["session_token"]
+        controller.remove("session_token")
 
 # Enterprise CSS for better styling
 st.markdown("""
@@ -132,7 +137,8 @@ if not st.session_state.authenticated:
         
         with tab1:
             st.markdown("<br>", unsafe_allow_html=True)
-            login_username = st.text_input("Email Address", key="login_username")
+            # Sanitize input to prevent trailing space bugs
+            login_username = st.text_input("Email Address", key="login_username").strip().lower()
             login_password = st.text_input("Password", type="password", key="login_password")
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("Secure Login", use_container_width=True, type="primary"):
@@ -142,10 +148,10 @@ if not st.session_state.authenticated:
                     st.session_state.username = login_username
                     st.session_state.full_name = user_full_name
                     
-                    # Create persistent session
+                    # Create persistent session and set Cookie
                     token = create_session(login_username)
                     st.session_state.db_session_token = token
-                    st.query_params["session_token"] = token
+                    controller.set("session_token", token, max_age=86400 * 30) # 30 days
                     
                     st.rerun()
                 else:
@@ -153,8 +159,9 @@ if not st.session_state.authenticated:
                     
         with tab2:
             st.markdown("<br>", unsafe_allow_html=True)
-            signup_name = st.text_input("Full Name", key="signup_name")
-            signup_username = st.text_input("Work Email Address (Gmail)", key="signup_username")
+            signup_name = st.text_input("Full Name", key="signup_name").strip()
+            # Sanitize registration email
+            signup_username = st.text_input("Work Email Address (Gmail)", key="signup_username").strip().lower()
             signup_password = st.text_input("New Password", type="password", key="signup_password")
             signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
             st.markdown("<br>", unsafe_allow_html=True)
@@ -298,8 +305,7 @@ with st.sidebar:
             # Clear session
             if st.session_state.db_session_token:
                 clear_session(st.session_state.db_session_token)
-            if "session_token" in st.query_params:
-                del st.query_params["session_token"]
+            controller.remove("session_token")
             
             # Log out
             st.session_state.authenticated = False
@@ -314,8 +320,7 @@ with st.sidebar:
     if st.button("🚪 Logout"):
         if st.session_state.db_session_token:
             clear_session(st.session_state.db_session_token)
-        if "session_token" in st.query_params:
-            del st.query_params["session_token"]
+        controller.remove("session_token")
             
         st.session_state.authenticated = False
         st.session_state.username = None
