@@ -36,8 +36,9 @@ st.markdown("""
     .main {
         padding: 2rem;
     }
+    /* Removed hardcoded background-color to fix text visibility in dark mode */
     .stTextInput > div > div > input {
-        background-color: #f0f2f6;
+        border-radius: 8px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -52,7 +53,7 @@ if not st.session_state.authenticated:
     
     with tab1:
         st.subheader("Sign In")
-        login_username = st.text_input("Username", key="login_username")
+        login_username = st.text_input("Email Address", key="login_username")
         login_password = st.text_input("Password", type="password", key="login_password")
         if st.button("Login"):
             if authenticate_user(login_username, login_password):
@@ -61,18 +62,20 @@ if not st.session_state.authenticated:
                 st.success("Logged in successfully!")
                 st.rerun()
             else:
-                st.error("Invalid username or password")
+                st.error("Invalid email or password")
                 
     with tab2:
         st.subheader("Sign Up")
-        signup_username = st.text_input("New Username", key="signup_username")
+        signup_username = st.text_input("New Email Address (Gmail)", key="signup_username")
         signup_password = st.text_input("New Password", type="password", key="signup_password")
         signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
         if st.button("Register"):
-            if signup_password != signup_confirm:
+            if not signup_username.lower().endswith("@gmail.com"):
+                st.error("Please use a valid @gmail.com address.")
+            elif signup_password != signup_confirm:
                 st.error("Passwords do not match!")
-            elif len(signup_username) < 3 or len(signup_password) < 6:
-                st.error("Username must be at least 3 chars and password at least 6 chars.")
+            elif len(signup_username) < 13 or len(signup_password) < 6:
+                st.error("Invalid email length or password must be at least 6 chars.")
             else:
                 success, msg = create_user(signup_username, signup_password)
                 if success:
