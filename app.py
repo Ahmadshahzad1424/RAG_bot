@@ -290,16 +290,7 @@ if uploaded_file is not None:
                 st.session_state.processed_file = uploaded_file.name
                 
                 # Show success
-                st.success(f"✅ Loaded {uploaded_file.name} with {len(chunks)} chunks!")
-                
-                # Show stats
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Chunks", len(chunks))
-                with col2:
-                    st.metric("Chunk Size", f"{chunk_size} chars")
-                with col3:
-                    st.metric("Collection", collection_name)
+                st.success(f"✅ Successfully added **{uploaded_file.name}** to your knowledge base!")
                     
             except Exception as e:
                 st.error(f"❌ Error processing PDF: {str(e)}")
