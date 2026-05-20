@@ -48,21 +48,73 @@ if not st.session_state.authenticated and "session_token" in st.query_params:
         # Invalid or expired token
         del st.query_params["session_token"]
 
-# CSS for better styling
+# Enterprise CSS for better styling
 st.markdown("""
     <style>
-    .main {
-        padding: 2rem;
+    /* Hide default Streamlit elements for a cleaner SaaS look */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Main container width */
+    .block-container {
+        padding-top: 1rem;
+        max-width: 1000px;
     }
-    /* Removed hardcoded background-color to fix text visibility in dark mode */
+    
+    /* Modern inputs */
     .stTextInput > div > div > input {
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s;
+    }
+    .stTextInput > div > div > input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+    }
+    
+    /* Enterprise Buttons */
+    .stButton > button {
+        border-radius: 6px;
+        font-weight: 600;
+        border: 1px solid rgba(128,128,128,0.2);
+        transition: all 0.2s ease-in-out;
+    }
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-color: rgba(128,128,128,0.3);
+    }
+    
+    /* Primary buttons (like login/register) */
+    button[kind="primary"] {
+        background-color: #ff9900;
+        color: white;
+        border: none;
+    }
+    button[kind="primary"]:hover {
+        background-color: #e68a00;
+    }
+    
+    /* Chat bubbles */
+    .stChatMessage {
         border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(128,128,128,0.15);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Title
-st.title("🤖 RAG Document Q&A System")
+# Premium Custom Header Banner (AWS Style)
+st.markdown("""
+<div style="background: linear-gradient(90deg, #232f3e 0%, #1a222d 100%); padding: 2rem 2.5rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-bottom: 4px solid #ff9900;">
+    <h1 style="color: white; margin: 0; font-size: 2.2rem; font-weight: 700; font-family: 'Segoe UI', Roboto, sans-serif; letter-spacing: -0.5px;">Enterprise Document Intelligence</h1>
+    <p style="color: #94a3b8; margin-top: 0.5rem; margin-bottom: 0; font-size: 1.05rem;">Secure Retrieval-Augmented Generation Architecture</p>
+</div>
+""", unsafe_allow_html=True)
 
 if not st.session_state.authenticated:
     st.markdown("Please sign in or sign up to access your personal knowledge base.")
