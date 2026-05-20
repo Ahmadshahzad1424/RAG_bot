@@ -388,6 +388,9 @@ if st.session_state.chatbot is not None:
         <div style='text-align: center; margin-top: 4rem; margin-bottom: 4rem;'>
             <h1 style='font-size: 2.5rem; color: #1e293b; font-weight: 700;'>How can I help you today?</h1>
             <p style='color: #64748b; font-size: 1.1rem;'>Ask a question, request a summary, or extract data from your secure knowledge base.</p>
+            <p style='color: #94a3b8; font-size: 0.95rem; margin-top: 1.5rem;'>
+                <em>💡 Want to add or remove files? Open the <strong>⚙️ Settings</strong> menu in the left sidebar.</em>
+            </p>
         </div>
         """, unsafe_allow_html=True)
     else:
