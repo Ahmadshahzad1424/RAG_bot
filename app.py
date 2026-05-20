@@ -7,7 +7,14 @@ from pdf_processor import PDFProcessor
 from embedding_store import EmbeddingStore
 import os
 import uuid
-from auth import authenticate_user, create_user, update_password, delete_user
+from auth import authenticate_user, create_user, update_password, delete_user, create_session, get_user_from_session, clear_session
+
+# Page config (must be the first Streamlit command)
+st.set_page_config(
+    page_title="📚 RAG Document Q&A",
+    page_icon="🤖",
+    layout="wide"
+)
 
 # Initialize session state for auth and app
 if "authenticated" not in st.session_state:
@@ -24,13 +31,22 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "processed_file" not in st.session_state:
     st.session_state.processed_file = None
+if "db_session_token" not in st.session_state:
+    st.session_state.db_session_token = None
 
-# Page config
-st.set_page_config(
-    page_title="📚 RAG Document Q&A",
-    page_icon="🤖",
-    layout="wide"
-)
+# ---- Persistent Login Check ----
+# Check if a session token exists in the URL query params
+if not st.session_state.authenticated and "session_token" in st.query_params:
+    token = st.query_params["session_token"]
+    user_data = get_user_from_session(token)
+    if user_data:
+        st.session_state.authenticated = True
+        st.session_state.username = user_data["username"]
+        st.session_state.full_name = user_data["full_name"]
+        st.session_state.db_session_token = token
+    else:
+        # Invalid or expired token
+        del st.query_params["session_token"]
 
 # CSS for better styling
 st.markdown("""
@@ -63,6 +79,12 @@ if not st.session_state.authenticated:
                 st.session_state.authenticated = True
                 st.session_state.username = login_username
                 st.session_state.full_name = user_full_name
+                
+                # Create persistent session
+                token = create_session(login_username)
+                st.session_state.db_session_token = token
+                st.query_params["session_token"] = token
+                
                 st.success("Logged in successfully!")
                 st.rerun()
             else:
@@ -199,19 +221,32 @@ with st.sidebar:
             # Delete user from DB
             delete_user(st.session_state.username)
             
+            # Clear session
+            if st.session_state.db_session_token:
+                clear_session(st.session_state.db_session_token)
+            if "session_token" in st.query_params:
+                del st.query_params["session_token"]
+            
             # Log out
             st.session_state.authenticated = False
             st.session_state.username = None
             st.session_state.full_name = None
+            st.session_state.db_session_token = None
             st.session_state.chatbot = None
             st.session_state.messages = []
             st.rerun()
 
     st.markdown("---")
     if st.button("🚪 Logout"):
+        if st.session_state.db_session_token:
+            clear_session(st.session_state.db_session_token)
+        if "session_token" in st.query_params:
+            del st.query_params["session_token"]
+            
         st.session_state.authenticated = False
         st.session_state.username = None
         st.session_state.full_name = None
+        st.session_state.db_session_token = None
         st.session_state.chatbot = None
         st.session_state.messages = []
         st.rerun()

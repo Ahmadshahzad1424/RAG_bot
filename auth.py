@@ -15,6 +15,13 @@ def init_db():
             salt TEXT NOT NULL
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     try:
         c.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT 'User'")
     except sqlite3.OperationalError:
@@ -115,6 +122,42 @@ def delete_user(username):
     except Exception:
         success = False
     finally:
-        conn.close()
-        
     return success
+
+def create_session(username):
+    """Creates a persistent session token for URL-based persistence."""
+    import uuid
+    token = str(uuid.uuid4())
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO sessions (token, username) VALUES (?, ?)", (token, username))
+    conn.commit()
+    conn.close()
+    return token
+
+def get_user_from_session(token):
+    """Retrieves a user's details based on their session token."""
+    init_db()
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        SELECT u.username, u.full_name 
+        FROM users u 
+        JOIN sessions s ON u.username = s.username 
+        WHERE s.token = ?
+    ''', (token,))
+    result = c.fetchone()
+    conn.close()
+    if result:
+        return {"username": result[0], "full_name": result[1]}
+    return None
+
+def clear_session(token):
+    """Removes a session token from the database."""
+    if not token:
+        return
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("DELETE FROM sessions WHERE token=?", (token,))
+    conn.commit()
+    conn.close()
