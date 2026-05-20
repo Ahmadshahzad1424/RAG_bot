@@ -14,7 +14,8 @@ from streamlit_cookies_controller import CookieController
 st.set_page_config(
     page_title="📚 RAG Document Q&A",
     page_icon="🤖",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # Initialize session state for auth and app
@@ -58,7 +59,7 @@ st.markdown("""
     <style>
     /* Hide default Streamlit elements for a cleaner SaaS look */
     #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
+    [data-testid="stToolbar"] {visibility: hidden;}
     footer {visibility: hidden;}
     
     /* Main container width */
