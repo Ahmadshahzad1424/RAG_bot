@@ -117,53 +117,63 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if not st.session_state.authenticated:
-    st.markdown("Please sign in or sign up to access your personal knowledge base.")
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    _, col_auth, _ = st.columns([1, 2, 1])
     
-    tab1, tab2 = st.tabs(["Sign In", "Sign Up"])
-    
-    with tab1:
-        st.subheader("Sign In")
-        login_username = st.text_input("Email Address", key="login_username")
-        login_password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Login"):
-            is_auth, user_full_name = authenticate_user(login_username, login_password)
-            if is_auth:
-                st.session_state.authenticated = True
-                st.session_state.username = login_username
-                st.session_state.full_name = user_full_name
-                
-                # Create persistent session
-                token = create_session(login_username)
-                st.session_state.db_session_token = token
-                st.query_params["session_token"] = token
-                
-                st.success("Logged in successfully!")
-                st.rerun()
-            else:
-                st.error("Invalid email or password")
-                
-    with tab2:
-        st.subheader("Sign Up")
-        signup_name = st.text_input("Full Name", key="signup_name")
-        signup_username = st.text_input("New Email Address (Gmail)", key="signup_username")
-        signup_password = st.text_input("New Password", type="password", key="signup_password")
-        signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
-        if st.button("Register"):
-            if not signup_name.strip():
-                st.error("Please enter your full name.")
-            elif not signup_username.lower().endswith("@gmail.com"):
-                st.error("Please use a valid @gmail.com address.")
-            elif signup_password != signup_confirm:
-                st.error("Passwords do not match!")
-            elif len(signup_username) < 13 or len(signup_password) < 6:
-                st.error("Invalid email length or password must be at least 6 chars.")
-            else:
-                success, msg = create_user(signup_username, signup_password, signup_name)
-                if success:
-                    st.success("Account created successfully! Please sign in.")
-                else:
-                    st.error(f"Registration failed: {msg}")
+    with col_auth:
+        st.markdown("""
+        <div style='text-align: center; margin-bottom: 2rem;'>
+            <h2 style='color: #232f3e; font-weight: 700;'>Welcome to DocuBrain AI</h2>
+            <p style='color: #64748b;'>Sign in to access your secure knowledge base.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        tab1, tab2 = st.tabs(["🔑 Sign In", "✨ Create Account"])
+        
+        with tab1:
+            st.markdown("<br>", unsafe_allow_html=True)
+            login_username = st.text_input("Email Address", key="login_username")
+            login_password = st.text_input("Password", type="password", key="login_password")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Secure Login", use_container_width=True, type="primary"):
+                is_auth, user_full_name = authenticate_user(login_username, login_password)
+                if is_auth:
+                    st.session_state.authenticated = True
+                    st.session_state.username = login_username
+                    st.session_state.full_name = user_full_name
                     
+                    # Create persistent session
+                    token = create_session(login_username)
+                    st.session_state.db_session_token = token
+                    st.query_params["session_token"] = token
+                    
+                    st.rerun()
+                else:
+                    st.error("Invalid email or password")
+                    
+        with tab2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            signup_name = st.text_input("Full Name", key="signup_name")
+            signup_username = st.text_input("Work Email Address (Gmail)", key="signup_username")
+            signup_password = st.text_input("New Password", type="password", key="signup_password")
+            signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Register Account", use_container_width=True, type="primary"):
+                if not signup_name.strip():
+                    st.error("Please enter your full name.")
+                elif not signup_username.lower().endswith("@gmail.com"):
+                    st.error("Please use a valid @gmail.com address.")
+                elif signup_password != signup_confirm:
+                    st.error("Passwords do not match!")
+                elif len(signup_username) < 13 or len(signup_password) < 6:
+                    st.error("Invalid email length or password must be at least 6 chars.")
+                else:
+                    success, msg = create_user(signup_username, signup_password, signup_name)
+                    if success:
+                        st.success("Account created successfully! Please sign in.")
+                    else:
+                        st.error(f"Registration failed: {msg}")
+                        
     # Stop execution here if not authenticated
     st.stop()
 
@@ -200,22 +210,24 @@ with st.sidebar:
     else:
         uploaded_file = st.file_uploader("📄 Upload PDF", type=["pdf"])
     
-    chunk_size = st.slider(
-        "Chunk Size",
-        min_value=300,
-        max_value=1000,
-        value=500,
-        step=100,
-        help="Number of characters per chunk"
-    )
-    
-    num_chunks = st.slider(
-        "Relevant Chunks",
-        min_value=1,
-        max_value=10,
-        value=3,
-        help="How many chunks to retrieve for context"
-    )
+    with st.expander("⚙️ Advanced Engine Settings"):
+        st.caption("Developer parameters for the RAG Engine.")
+        chunk_size = st.slider(
+            "Chunk Size",
+            min_value=300,
+            max_value=1000,
+            value=500,
+            step=100,
+            help="Number of characters per chunk"
+        )
+        
+        num_chunks = st.slider(
+            "Relevant Chunks",
+            min_value=1,
+            max_value=10,
+            value=3,
+            help="How many chunks to retrieve for context"
+        )
     
     st.markdown("---")
     if st.button("🗑️ Clear Chat History"):
@@ -365,12 +377,18 @@ if st.session_state.chatbot is None:
 if st.session_state.chatbot is not None:
     st.divider()
     
-    # Display chat history
-    st.subheader("💬 Conversation")
-    
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # Display chat history or empty state
+    if not st.session_state.messages:
+        st.markdown("""
+        <div style='text-align: center; margin-top: 4rem; margin-bottom: 4rem;'>
+            <h1 style='font-size: 2.5rem; color: #1e293b; font-weight: 700;'>How can I help you today?</h1>
+            <p style='color: #64748b; font-size: 1.1rem;'>Ask a question, request a summary, or extract data from your secure knowledge base.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
     
     # Input area
     question = st.chat_input(
