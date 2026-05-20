@@ -115,7 +115,7 @@ if not st.session_state.authenticated:
     # Stop execution here if not authenticated
     st.stop()
 
-st.markdown(f"Welcome back, **{st.session_state.full_name}**! Upload PDFs to build your personal knowledge base.")
+st.markdown(f"Welcome back, **{str(st.session_state.full_name).strip()}**! Upload PDFs to build your personal knowledge base.")
 
 # Sidebar for controls
 with st.sidebar:
