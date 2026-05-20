@@ -6,6 +6,22 @@ from rag_chatbot import RAGChatbot
 from pdf_processor import PDFProcessor
 from embedding_store import EmbeddingStore
 import os
+import uuid
+from auth import authenticate_user, create_user
+
+# Initialize session state for auth and app
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "username" not in st.session_state:
+    st.session_state.username = None
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+if "chatbot" not in st.session_state:
+    st.session_state.chatbot = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "processed_file" not in st.session_state:
+    st.session_state.processed_file = None
 
 # Page config
 st.set_page_config(
@@ -28,7 +44,46 @@ st.markdown("""
 
 # Title
 st.title("🤖 RAG Document Q&A System")
-st.markdown("Upload a PDF and ask questions about its content")
+
+if not st.session_state.authenticated:
+    st.markdown("Please sign in or sign up to access your personal knowledge base.")
+    
+    tab1, tab2 = st.tabs(["Sign In", "Sign Up"])
+    
+    with tab1:
+        st.subheader("Sign In")
+        login_username = st.text_input("Username", key="login_username")
+        login_password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Login"):
+            if authenticate_user(login_username, login_password):
+                st.session_state.authenticated = True
+                st.session_state.username = login_username
+                st.success("Logged in successfully!")
+                st.rerun()
+            else:
+                st.error("Invalid username or password")
+                
+    with tab2:
+        st.subheader("Sign Up")
+        signup_username = st.text_input("New Username", key="signup_username")
+        signup_password = st.text_input("New Password", type="password", key="signup_password")
+        signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm")
+        if st.button("Register"):
+            if signup_password != signup_confirm:
+                st.error("Passwords do not match!")
+            elif len(signup_username) < 3 or len(signup_password) < 6:
+                st.error("Username must be at least 3 chars and password at least 6 chars.")
+            else:
+                success, msg = create_user(signup_username, signup_password)
+                if success:
+                    st.success("Account created successfully! Please sign in.")
+                else:
+                    st.error(f"Registration failed: {msg}")
+                    
+    # Stop execution here if not authenticated
+    st.stop()
+
+st.markdown(f"Welcome back, **{st.session_state.username}**! Upload PDFs to build your personal knowledge base.")
 
 # Sidebar for controls
 with st.sidebar:
@@ -54,52 +109,90 @@ with st.sidebar:
         help="How many chunks to retrieve for context"
     )
     
-    collection_name = st.text_input(
-        "Collection Name",
-        value="rag_documents",
-        help="Name of the ChromaDB collection"
-    )
+    user_collection_name = f"user_data_{st.session_state.username}"
     
-    if st.button("🗑️ Clear History"):
+    # Hide the collection name from user since it's now personal
+    collection_name = user_collection_name
+    
+    st.markdown("---")
+    if st.button("🗑️ Clear Chat History"):
         st.session_state.chatbot = None
+        st.session_state.messages = []
         st.success("✅ Conversation history cleared")
-
-# Initialize session state
-if "chatbot" not in st.session_state:
-    st.session_state.chatbot = None
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+        
+    if st.button("⚠️ Clear Knowledge Base"):
+        try:
+            store = EmbeddingStore(collection_name=collection_name)
+            store.client.delete_collection(name=collection_name)
+            st.session_state.chatbot = None
+            st.session_state.processed_file = None
+            st.success("✅ Your personal knowledge base has been completely erased.")
+        except Exception as e:
+            st.error("Could not clear knowledge base. It might already be empty.")
+            
+    st.markdown("---")
+    if st.button("🚪 Logout"):
+        st.session_state.authenticated = False
+        st.session_state.username = None
+        st.session_state.chatbot = None
+        st.session_state.messages = []
+        st.rerun()
 
 # Handle file upload
 if uploaded_file is not None:
-    with st.spinner("📖 Processing PDF..."):
-        # Save uploaded file temporarily
-        with open("temp_pdf.pdf", "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        
-        # Process PDF
-        processor = PDFProcessor(chunk_size=chunk_size, overlap=100)
-        chunks = processor.process("temp_pdf.pdf")
-        
-        # Store in ChromaDB
+    # Only process if it's a new file
+    if st.session_state.processed_file != uploaded_file.name:
+        with st.spinner("📖 Processing PDF..."):
+            temp_filename = f"temp_{st.session_state.session_id}.pdf"
+            
+            # Save uploaded file temporarily
+            with open(temp_filename, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            try:
+                # Process PDF
+                processor = PDFProcessor(chunk_size=chunk_size, overlap=100)
+                chunks = processor.process(temp_filename)
+                
+                # Store in ChromaDB
+                store = EmbeddingStore(collection_name=collection_name)
+                
+                # Notice we do NOT delete the collection here anymore!
+                # This allows users to upload multiple documents into their personal knowledge base.
+                store.store_chunks(chunks)
+                
+                # Re-initialize chatbot to make sure it uses the updated collection
+                st.session_state.chatbot = RAGChatbot(collection_name=collection_name)
+                st.session_state.processed_file = uploaded_file.name
+                
+                # Show success
+                st.success(f"✅ Loaded {uploaded_file.name} with {len(chunks)} chunks!")
+                
+                # Show stats
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Chunks", len(chunks))
+                with col2:
+                    st.metric("Chunk Size", f"{chunk_size} chars")
+                with col3:
+                    st.metric("Collection", collection_name)
+                    
+            except Exception as e:
+                st.error(f"❌ Error processing PDF: {str(e)}")
+            finally:
+                # Clean up temporary file
+                if os.path.exists(temp_filename):
+                    os.remove(temp_filename)
+
+# Always initialize the chatbot if it's not None, or if they have a knowledge base
+if st.session_state.chatbot is None:
+    # Try to load existing knowledge base
+    try:
         store = EmbeddingStore(collection_name=collection_name)
-        store.store_chunks(chunks)
-        
-        # Create chatbot
-        st.session_state.chatbot = RAGChatbot(collection_name=collection_name)
-        
-        # Show success
-        st.success(f"✅ Loaded PDF with {len(chunks)} chunks!")
-        
-        # Show stats
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Chunks", len(chunks))
-        with col2:
-            st.metric("Chunk Size", f"{chunk_size} chars")
-        with col3:
-            st.metric("Collection", collection_name)
+        if store.collection.count() > 0:
+            st.session_state.chatbot = RAGChatbot(collection_name=collection_name)
+    except Exception:
+        pass
 
 # Main chat interface
 if st.session_state.chatbot is not None:

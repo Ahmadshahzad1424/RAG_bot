@@ -36,11 +36,16 @@ class EmbeddingStore:
         """
         JOB: Take text chunks and store them in ChromaDB
         """
+        import uuid
+        
         if metadata_list is None:
             metadata_list = [{"source": "document", "chunk_id": i} for i in range(len(chunks))]
         
+        # Generate unique UUIDs for each chunk to prevent ID collisions
+        ids = [str(uuid.uuid4()) for _ in range(len(chunks))]
+        
         self.collection.add(
-            ids=[f"chunk_{i}" for i in range(len(chunks))],
+            ids=ids,
             documents=chunks,
             metadatas=metadata_list
         )

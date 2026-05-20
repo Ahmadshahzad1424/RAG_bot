@@ -68,6 +68,10 @@ class RAGChatbot:
         search_results = self.store.search(question, num_results=num_chunks)
         
         # Step 2: Extract chunks and format them
+        if not search_results["documents"] or not search_results["documents"][0]:
+            print("⚠️ No relevant chunks found.")
+            return "I couldn't find any relevant information in the uploaded document to answer your question."
+            
         retrieved_chunks = search_results["documents"][0]  # Get text of chunks
         retrieved_distances = search_results["distances"][0]  # Get similarity scores
         
@@ -106,18 +110,21 @@ Please answer based on the context above."""
         print(f"\n📡 Sending to Groq...\n")
         
         # Step 4: Call Groq API
-        response = self.groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Modern, powerful model  # Modern, fast model
-            messages=[
-                {"role": "system", "content": system_message},
-                *self.conversation_history  # Include all previous messages
-            ],
-            temperature=0.7,  # Balance between creative and factual
-            max_tokens=1000  # Max length of answer
-        )
-        
-        # Step 5: Extract answer
-        answer = response.choices[0].message.content
+        try:
+            response = self.groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",  # Modern, powerful model
+                messages=[
+                    {"role": "system", "content": system_message},
+                    *self.conversation_history  # Include all previous messages
+                ],
+                temperature=0.7,  # Balance between creative and factual
+                max_tokens=1000  # Max length of answer
+            )
+            
+            # Step 5: Extract answer
+            answer = response.choices[0].message.content
+        except Exception as e:
+            answer = f"❌ Error communicating with the AI model: {str(e)}"
         
         # Add assistant response to history
         self.conversation_history.append({

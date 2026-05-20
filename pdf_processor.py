@@ -36,25 +36,24 @@ class PDFProcessor:
         OUTPUT: All text from the PDF as one big string
         """
         
-        # Create a PdfReader object that knows how to read PDFs
-        reader = PdfReader(pdf_path)
-        
-        # Empty string to store all text
-        text = ""
-        
-        # Loop through EVERY page in the PDF
-        # len(reader.pages) = how many pages exist
-        # range(5) = 0, 1, 2, 3, 4
-        for page_num in range(len(reader.pages)):
+        try:
+            # Create a PdfReader object that knows how to read PDFs
+            reader = PdfReader(pdf_path)
             
-            # Get the current page
-            page = reader.pages[page_num]
+            # Empty string to store all text
+            text = ""
             
-            # Extract text from this page and add to our text
-            # + "\n" = add a line break so pages don't merge together
-            text += page.extract_text() + "\n"
-        
-        return text  # Give back all the text
+            # Loop through EVERY page in the PDF
+            for page_num in range(len(reader.pages)):
+                page = reader.pages[page_num]
+                # Extract text from this page and add to our text
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted + "\n"
+                    
+            return text  # Give back all the text
+        except Exception as e:
+            raise ValueError(f"Failed to read PDF file: {str(e)}")
     
     def chunk_text(self, text):
         """
