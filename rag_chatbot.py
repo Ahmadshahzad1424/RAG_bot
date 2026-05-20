@@ -72,23 +72,24 @@ class RAGChatbot:
             print("⚠️ No relevant chunks found.")
             return "I couldn't find any relevant information in the uploaded document to answer your question."
             
-        retrieved_chunks = search_results["documents"][0]  # Get text of chunks
-        retrieved_distances = search_results["distances"][0]  # Get similarity scores
+        retrieved_chunks = search_results["documents"][0]
+        retrieved_distances = search_results["distances"][0]
+        retrieved_metadatas = search_results.get("metadatas", [[{}] * len(retrieved_chunks)])[0]
         
         # Create context string (all chunks together)
         context = "\n\n".join(
-            f"[Document Excerpt]\n{chunk}"
-            for i, (chunk, dist) in enumerate(zip(retrieved_chunks, retrieved_distances))
+            f"[Source Document: {meta.get('source', 'Unknown Document')}]\n{chunk}"
+            for chunk, meta, dist in zip(retrieved_chunks, retrieved_metadatas, retrieved_distances)
         )
         
         print(f"✅ Found {len(retrieved_chunks)} relevant chunks")
         
         # Step 3: Create the message for Groq
         # This tells Groq: "Here's context. Use it to answer the question."
-        system_message = """You are a professional and helpful AI assistant. 
+        system_message = """You are a professional and highly intelligent AI assistant. 
         
 Answer the user's question naturally based ONLY on the provided document context.
-Do NOT mention terms like "context", "chunks", or "excerpts" in your answer, as the user does not know about the technical backend. Just provide a direct, human-readable answer.
+When you provide information, explicitly mention the name of the Source Document it came from (e.g., "According to document.pdf..."). Do NOT use technical jargon like "chunks" or "excerpts".
 If the answer is not in the context, say "I don't have information about this in the uploaded documents." """
         
         user_message = f"""Context from documents:
@@ -107,6 +108,10 @@ Please answer based on the context above."""
             "content": user_message
         })
         
+        # Limit conversation history to the last 5 interactions (10 messages: 5 user, 5 assistant)
+        # to prevent exceeding the model's context window.
+        recent_history = self.conversation_history[-10:] if len(self.conversation_history) > 10 else self.conversation_history
+        
         print(f"\n📡 Sending to Groq...\n")
         
         # Step 4: Call Groq API
@@ -115,7 +120,7 @@ Please answer based on the context above."""
                 model="llama-3.3-70b-versatile",  # Modern, powerful model
                 messages=[
                     {"role": "system", "content": system_message},
-                    *self.conversation_history  # Include all previous messages
+                    *recent_history  # Only include recent messages
                 ],
                 temperature=0.7,  # Balance between creative and factual
                 max_tokens=1000  # Max length of answer
