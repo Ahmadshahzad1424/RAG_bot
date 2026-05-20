@@ -237,4 +237,4 @@ if st.session_state.chatbot is not None:
             "content": answer
         })
 else:
-    st.info("👆 Upload a PDF file to get started!")
+    st.info("👈 **Open the sidebar menu on the left** to upload a PDF file and get started!")
