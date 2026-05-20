@@ -122,6 +122,7 @@ def delete_user(username):
     except Exception:
         success = False
     finally:
+        conn.close()
     return success
 
 def create_session(username):
