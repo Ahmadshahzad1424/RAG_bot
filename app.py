@@ -58,8 +58,6 @@ if not st.session_state.authenticated and session_token:
 st.markdown("""
     <style>
     /* Hide default Streamlit elements for a cleaner SaaS look */
-    #MainMenu {visibility: hidden;}
-    [data-testid="stToolbar"] {visibility: hidden;}
     footer {visibility: hidden;}
     
     /* Main container width */
