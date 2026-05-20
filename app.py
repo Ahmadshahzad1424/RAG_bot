@@ -121,8 +121,32 @@ st.markdown(f"Welcome back, **{str(st.session_state.full_name).strip()}**! Uploa
 with st.sidebar:
     st.header("⚙️ Settings")
     
-    # File uploader
-    uploaded_file = st.file_uploader("📄 Upload PDF", type=["pdf"])
+    # Sanitize username for ChromaDB collection name (only allows a-zA-Z0-9._-)
+    sanitized_username = st.session_state.username.replace("@", "_").replace(".", "_")
+    collection_name = f"user_data_{sanitized_username}"
+    
+    # 1. Fetch existing documents to enforce quota
+    current_doc_count = 0
+    unique_sources = []
+    try:
+        store = EmbeddingStore(collection_name=collection_name)
+        collection_data = store.collection.get(include=["metadatas"])
+        if collection_data and collection_data["metadatas"]:
+            unique_sources = list(set([meta.get("source", "Unknown Document") for meta in collection_data["metadatas"] if meta]))
+            current_doc_count = len(unique_sources)
+    except Exception:
+        pass
+
+    # 2. Display Quota Usage
+    st.markdown(f"**Storage Quota:** {current_doc_count} / 5 Documents")
+    st.progress(current_doc_count / 5.0)
+    
+    # 3. File uploader (disabled if quota reached)
+    if current_doc_count >= 5:
+        st.warning("⚠️ Free tier limit reached. Please delete an existing document below to upload more.")
+        uploaded_file = None
+    else:
+        uploaded_file = st.file_uploader("📄 Upload PDF", type=["pdf"])
     
     chunk_size = st.slider(
         "Chunk Size",
@@ -141,13 +165,6 @@ with st.sidebar:
         help="How many chunks to retrieve for context"
     )
     
-    # Sanitize username for ChromaDB collection name (only allows a-zA-Z0-9._-)
-    sanitized_username = st.session_state.username.replace("@", "_").replace(".", "_")
-    user_collection_name = f"user_data_{sanitized_username}"
-    
-    # Hide the collection name from user since it's now personal
-    collection_name = user_collection_name
-    
     st.markdown("---")
     if st.button("🗑️ Clear Chat History"):
         st.session_state.chatbot = None
@@ -155,14 +172,7 @@ with st.sidebar:
         st.success("✅ Conversation history cleared")
         
     try:
-        store = EmbeddingStore(collection_name=collection_name)
-        
-        # Fetch all existing documents from ChromaDB
-        collection_data = store.collection.get(include=["metadatas"])
-        if collection_data and collection_data["metadatas"]:
-            # Extract unique filenames
-            unique_sources = list(set([meta.get("source", "Unknown Document") for meta in collection_data["metadatas"] if meta]))
-            
+        if unique_sources:
             st.markdown("---")
             st.subheader("📁 Your Documents")
             for source in unique_sources:
